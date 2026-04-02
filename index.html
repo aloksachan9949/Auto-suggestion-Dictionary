@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Dictionary Search</title>
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --bg-color: #f8fafc;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+        }
+
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            padding-top: 80px; 
+        }
+
+        .search-container {
+            position: relative;
+            width: 400px;
+        }
+
+        h2 { margin-bottom: 20px; color: var(--text-main); }
+
+        input { 
+            width: 100%;
+            padding: 14px 20px; 
+            font-size: 18px; 
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            outline: none;
+            transition: border-color 0.2s;
+            box-sizing: border-box;
+        }
+
+        input:focus { border-color: var(--primary-color); box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
+
+        .results-box { 
+            position: absolute;
+            width: 100%;
+            background: white;
+            border-radius: 12px;
+            margin-top: 8px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+            display: none; 
+            overflow: hidden;
+            z-index: 10;
+        }
+
+        .item { 
+            padding: 12px 20px; 
+            cursor: pointer; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .item:last-child { border-bottom: none; }
+
+        .item:hover { background-color: #eff6ff; }
+
+        .word-text { font-weight: 500; font-size: 16px; }
+
+        .freq-badge { 
+            background: #dbeafe; 
+            color: var(--primary-color); 
+            padding: 2px 8px; 
+            border-radius: 6px; 
+            font-size: 12px; 
+            font-weight: 600;
+        }
+
+        .no-results { padding: 15px; color: var(--text-muted); text-align: center; }
+    </style>
+</head>
+<body>
+
+    <h2>Backend Dictionary System</h2>
+    
+    <div class="search-container">
+        <input type="text" id="search" placeholder="Search prefix (e.g. 'app')..." autocomplete="off" oninput="fetchResults()">
+        <div id="results" class="results-box"></div>
+    </div>
+
+    <button onclick="addWord()" style="
+    margin-top:10px;
+    padding:10px 15px;
+    border:none;
+    background:#2563eb;
+    color:white;
+    border-radius:8px;
+    cursor:pointer;
+">
+    Add Word
+</button>
+
+<div id="message" style="margin-top:10px; font-size:14px;"></div>
+    <script>
+        async function addWord() {
+    const input = document.getElementById('search');
+    const messageBox = document.getElementById('message');
+    const word = input.value.trim();
+
+    if (word.length === 0) {
+        messageBox.innerText = "Please enter a word";
+        messageBox.style.color = "red";
+        return;
+    }
+
+    try {
+        const response = await fetch(`http://127.0.0.1:8000/add?word=${encodeURIComponent(word)}`, {
+            method: "POST"
+        });
+
+        const data = await response.json();
+
+        messageBox.innerText = data.message;
+        messageBox.style.color = data.message.includes("added") ? "green" : "orange";
+
+    } catch (error) {
+        messageBox.innerText = "Server Error";
+        messageBox.style.color = "red";
+    }
+}
+        async function fetchResults() {
+            const input = document.getElementById('search');
+            const resBox = document.getElementById('results');
+            const query = input.value.trim();
+
+            // Clear and hide if input is empty
+            if (query.length === 0) { 
+                resBox.style.display = 'none'; 
+                return; 
+            }
+
+            try {
+                // Pointing to your FastAPI server
+                const response = await fetch(`http://127.0.0.1:8000/search?prefix=${encodeURIComponent(query)}`);
+                
+                if (!response.ok) throw new Error("Network response was not ok");
+                
+                const data = await response.json();
+                console.log("Suggestions found:", data);
+
+                if (data.length === 0) {
+                    resBox.innerHTML = '<div class="no-results">No matches found</div>';
+                } else {
+                    resBox.innerHTML = data.map(item => `
+                        <div class="item" onclick="selectWord('${item.word}')">
+                            <span class="word-text">${item.word}</span>
+                            <span class="freq-badge">Freq: ${item.freq}</span>
+                        </div>
+                    `).join('');
+                }
+                
+                resBox.style.display = 'block';
+
+            } catch (error) {
+                console.error("Fetch error:", error);
+                resBox.innerHTML = '<div class="no-results" style="color: red;">Server Offline</div>';
+                resBox.style.display = 'block';
+            }
+        }
+
+        function selectWord(word) {
+            document.getElementById('search').value = word;
+            document.getElementById('results').style.display = 'none';
+        }
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!document.querySelector('.search-container').contains(e.target)) {
+                document.getElementById('results').style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>
