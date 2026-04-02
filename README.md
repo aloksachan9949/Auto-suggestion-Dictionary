@@ -97,9 +97,10 @@ Try adding multiple words and check order:
 
 Higher frequency first
 Then alphabetical
+
+For adding word in backend we use postman.
 Project Structure
-project/
-│
-├── main.py        # FastAPI backend
-├── index.html     # Frontend UI
-└── README.md      # Documentation
+project
+main.py        # FastAPI backend
+index.html     # Frontend UI
+README.md      # Documentation
